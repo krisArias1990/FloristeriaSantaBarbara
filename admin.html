@@ -2,247 +2,469 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Panel Administración - Floristería Santa Bárbara</title>
-    <meta name="robots" content="noindex, nofollow">
-    <link rel="stylesheet" href="css/styles.css">
-    <link rel="stylesheet" href="css/admin.css">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Administración - Floristería Santa Bárbara</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-storage-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        * { font-family: 'Inter', sans-serif; }
+        .glass { background: rgba(255,255,255,0.9); backdrop-filter: blur(10px); }
+        .loading-shimmer { 
+            background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+            background-size: 200% 100%;
+            animation: shimmer 1.5s infinite;
+        }
+        @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+    </style>
 </head>
-<body class="admin-body">
-    <div class="admin-container">
-        <!-- Login Screen -->
-        <div id="loginScreen" class="login-screen">
-            <div class="login-box">
-                <h2>🔐 Acceso Administrativo</h2>
-                <div class="form-group">
-                    <label>Contraseña</label>
-                    <input type="password" id="adminPassword" placeholder="Ingresa contraseña">
-                </div>
-                <button onclick="login()" class="btn-primary">Ingresar</button>
-                <p class="login-hint">Hint: flor2024</p>
+<body class="bg-gray-100">
+    <!-- Login Screen -->
+    <div id="loginScreen" class="min-h-screen flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl shadow-xl p-8 w-full max-w-md">
+            <div class="text-center mb-8">
+                <span class="text-5xl">🌸</span>
+                <h1 class="text-2xl font-bold text-gray-900 mt-4">Panel Administrativo</h1>
+                <p class="text-gray-600">Floristería Santa Bárbara</p>
             </div>
-        </div>
-
-        <!-- Admin Panel (Hidden by default) -->
-        <div id="adminPanel" style="display: none;">
-            <div class="admin-header">
+            
+            <div id="loginForm" class="space-y-4">
                 <div>
-                    <h1>🌸 Panel de Administración</h1>
-                    <p id="lastBackup">Último respaldo: Nunca</p>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Correo electrónico</label>
+                    <input type="email" id="loginEmail" class="w-full px-4 py-3 rounded-xl border border-gray-300 focus:border-pink-500 focus:ring-2 focus:ring-pink-200 outline-none" placeholder="admin@floristeria.com">
                 </div>
-                <div class="header-actions">
-                    <button onclick="window.open('index.html', '_blank')" class="btn-secondary">🌐 Ver Tienda</button>
-                    <button onclick="exportData()" class="btn-success">📥 Exportar Datos</button>
-                    <button onclick="logout()" class="btn-danger">Cerrar Sesión</button>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Contraseña</label>
+                    <input type="password" id="loginPassword" class="w-full px-4 py-3 rounded-xl border border-gray-300 focus:border-pink-500 focus:ring-2 focus:ring-pink-200 outline-none" placeholder="••••••••">
+                </div>
+                <button onclick="login()" class="w-full bg-pink-600 text-white py-3 rounded-xl font-semibold hover:bg-pink-700 transition">
+                    Ingresar
+                </button>
+                <p id="loginError" class="text-red-600 text-sm text-center hidden"></p>
+            </div>
+            
+            <div class="mt-6 text-center text-sm text-gray-500">
+                <p>Acceso solo para personal autorizado</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Admin Dashboard -->
+    <div id="dashboard" class="hidden min-h-screen">
+        <!-- Header -->
+        <header class="bg-white shadow-sm sticky top-0 z-40">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="flex justify-between items-center h-16">
+                    <div class="flex items-center gap-3">
+                        <span class="text-3xl">🌸</span>
+                        <h1 class="font-bold text-gray-900">Admin Panel</h1>
+                    </div>
+                    <div class="flex items-center gap-4">
+                        <span id="userEmail" class="text-sm text-gray-600 hidden sm:block"></span>
+                        <a href="index.html" target="_blank" class="text-gray-600 hover:text-pink-600 transition">
+                            <i data-lucide="external-link" class="w-5 h-5"></i>
+                        </a>
+                        <button onclick="logout()" class="text-gray-600 hover:text-red-600 transition">
+                            <i data-lucide="log-out" class="w-5 h-5"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            <!-- Stats -->
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+                <div class="bg-white rounded-xl p-6 shadow-sm">
+                    <div class="text-3xl font-bold text-pink-600" id="statProducts">-</div>
+                    <div class="text-sm text-gray-600">Productos</div>
+                </div>
+                <div class="bg-white rounded-xl p-6 shadow-sm">
+                    <div class="text-3xl font-bold text-blue-600" id="statOrders">-</div>
+                    <div class="text-sm text-gray-600">Pedidos hoy</div>
+                </div>
+                <div class="bg-white rounded-xl p-6 shadow-sm">
+                    <div class="text-3xl font-bold text-green-600" id="statRevenue">-</div>
+                    <div class="text-sm text-gray-600">Ventas hoy</div>
+                </div>
+                <div class="bg-white rounded-xl p-6 shadow-sm">
+                    <div class="text-3xl font-bold text-purple-600" id="statViews">-</div>
+                    <div class="text-sm text-gray-600">Visitas</div>
                 </div>
             </div>
 
-            <div id="alertContainer"></div>
+            <!-- Tabs -->
+            <div class="bg-white rounded-xl shadow-sm mb-6">
+                <div class="border-b flex overflow-x-auto">
+                    <button onclick="showTab('products')" id="tab-products" class="tab-btn px-6 py-4 font-medium text-pink-600 border-b-2 border-pink-600 whitespace-nowrap">
+                        Productos
+                    </button>
+                    <button onclick="showTab('categories')" id="tab-categories" class="tab-btn px-6 py-4 font-medium text-gray-600 hover:text-gray-900 whitespace-nowrap">
+                        Categorías
+                    </button>
+                    <button onclick="showTab('orders')" id="tab-orders" class="tab-btn px-6 py-4 font-medium text-gray-600 hover:text-gray-900 whitespace-nowrap">
+                        Pedidos
+                    </button>
+                    <button onclick="showTab('slides')" id="tab-slides" class="tab-btn px-6 py-4 font-medium text-gray-600 hover:text-gray-900 whitespace-nowrap">
+                        Banner
+                    </button>
+                </div>
 
-            <!-- Estadísticas -->
-            <div class="stats-grid">
-                <div class="stat-card">
-                    <div class="stat-number" id="statProducts">0</div>
-                    <div class="stat-label">Productos Activos</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-number" id="statCategories">0</div>
-                    <div class="stat-label">Categorías</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-number" id="statSlides">0</div>
-                    <div class="stat-label">Slides</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-number" id="statStorage">0</div>
-                    <div class="stat-label">KB Usados</div>
-                </div>
-            </div>
-
-            <!-- Categorías -->
-            <div class="admin-section">
-                <h2>🏷️ Gestión de Categorías</h2>
-                <div class="category-management" id="categoryList"></div>
-                <div class="add-category-form">
-                    <input type="text" id="newCategoryName" placeholder="Nueva categoría..." maxlength="30">
-                    <button onclick="addCategory()" class="btn-primary">➕ Agregar</button>
-                </div>
-            </div>
-
-            <!-- Productos -->
-            <div class="admin-section">
-                <h2 id="productFormTitle">➕ Nuevo Producto</h2>
-                <form id="productForm" onsubmit="saveProduct(event)">
-                    <input type="hidden" id="productId">
-                    
-                    <div class="form-grid">
-                        <div class="form-group">
-                            <label>Imagen del Producto *</label>
-                            <div class="image-upload-area" id="imageUploadArea" onclick="document.getElementById('productImage').click()">
-                                <input type="file" id="productImage" class="image-upload-input" accept="image/jpeg,image/png,image/jpg" onchange="previewImage(this)" capture="environment">
-                                <div class="upload-placeholder" id="uploadPlaceholder">
-                                    <span class="icon">📷</span>
-                                    <div>Toca para subir foto</div>
-                                    <small>Desde celular o PC. Máx. 2MB</small>
-                                </div>
-                                <img id="imagePreview" style="display: none;">
-                                <button type="button" class="remove-image-btn" id="removeImageBtn" onclick="removeImage(event)" style="display: none;">✕</button>
-                            </div>
-                        </div>
-                        
-                        <div class="form-fields">
-                            <div class="form-group">
-                                <label>Nombre del Producto *</label>
-                                <input type="text" id="productName" required maxlength="50" placeholder="Ej: Ramo de 12 Rosas Rojas">
-                            </div>
-                            
-                            <div class="form-group">
-                                <label>Categoría *</label>
-                                <select id="productCategory" required>
-                                    <option value="">Selecciona categoría</option>
-                                </select>
-                            </div>
-                            
-                            <div class="form-group">
-                                <label>Descripción</label>
-                                <textarea id="productDescription" rows="2" maxlength="150" placeholder="Descripción corta del producto..."></textarea>
-                            </div>
-                        </div>
+                <!-- Products Tab -->
+                <div id="content-products" class="p-6">
+                    <div class="flex justify-between items-center mb-6">
+                        <h2 class="text-lg font-bold text-gray-900">Gestión de Productos</h2>
+                        <button onclick="openProductModal()" class="bg-pink-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-pink-700 transition flex items-center gap-2">
+                            <i data-lucide="plus" class="w-4 h-4"></i>
+                            Nuevo Producto
+                        </button>
                     </div>
 
-                    <div class="price-section">
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label>Precio Regular (₡) *</label>
-                                <input type="number" id="productPrice" required min="1000" placeholder="25000">
-                            </div>
-                            <div class="form-group">
-                                <label>Precio Temporada (₡)</label>
-                                <input type="number" id="productSeasonalPrice" min="0" placeholder="22000">
-                            </div>
-                        </div>
-
-                        <div class="price-toggle-admin">
-                            <label>¿Mostrar precio de temporada por defecto?</label>
-                            <label class="switch">
-                                <input type="checkbox" id="seasonalToggle">
-                                <span class="slider round"></span>
-                            </label>
-                            <span id="seasonalLabel">No</span>
-                        </div>
-                        <small class="toggle-hint">Si activas esto, los clientes verán el precio de temporada como principal</small>
+                    <div class="overflow-x-auto">
+                        <table class="w-full">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th class="px-4 py-3 text-left text-sm font-medium text-gray-700">Producto</th>
+                                    <th class="px-4 py-3 text-left text-sm font-medium text-gray-700">Categoría</th>
+                                    <th class="px-4 py-3 text-left text-sm font-medium text-gray-700">Precio</th>
+                                    <th class="px-4 py-3 text-left text-sm font-medium text-gray-700">Estado</th>
+                                    <th class="px-4 py-3 text-right text-sm font-medium text-gray-700">Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody id="productsTable" class="divide-y divide-gray-200">
+                                <!-- Dinámico -->
+                            </tbody>
+                        </table>
                     </div>
-
-                    <div class="form-actions">
-                        <button type="submit" class="btn-primary" id="saveProductBtn">💾 Guardar Producto</button>
-                        <button type="button" onclick="resetProductForm()" class="btn-secondary">Cancelar</button>
-                    </div>
-                </form>
-            </div>
-
-            <!-- Lista de Productos -->
-            <div class="admin-section">
-                <h2>📦 Inventario de Productos</h2>
-                <div class="table-responsive">
-                    <table class="product-table">
-                        <thead>
-                            <tr>
-                                <th>Foto</th>
-                                <th>Producto</th>
-                                <th>Categoría</th>
-                                <th>Precio Mostrado</th>
-                                <th>Alternativo</th>
-                                <th>Estado</th>
-                                <th>Acciones</th>
-                            </tr>
-                        </thead>
-                        <tbody id="productsTableBody"></tbody>
-                    </table>
                 </div>
-                <div id="emptyProducts" class="empty-state" style="display: none;">
-                    <div class="icon">📭</div>
-                    <p>No hay productos registrados</p>
+
+                <!-- Other tabs hidden by default -->
+                <div id="content-categories" class="p-6 hidden">
+                    <!-- Categories management -->
                 </div>
-            </div>
-
-            <!-- Carrusel -->
-            <div class="admin-section">
-                <h2>🎠 Carrusel de Inicio</h2>
-                <form id="slideForm" onsubmit="addSlide(event)">
-                    <div class="form-grid">
-                        <div class="form-group">
-                            <label>Imagen del Slide (1200×400 ideal) *</label>
-                            <div class="image-upload-area" id="slideUploadArea" onclick="document.getElementById('slideImage').click()">
-                                <input type="file" id="slideImage" class="image-upload-input" accept="image/jpeg,image/png" onchange="previewSlideImage(this)">
-                                <div class="upload-placeholder" id="slideUploadPlaceholder">
-                                    <span class="icon">🖼️</span>
-                                    <div>Click para subir banner</div>
-                                    <small>Formato panorámico recomendado</small>
-                                </div>
-                                <img id="slideImagePreview" style="display: none;">
-                            </div>
-                        </div>
-                        <div class="form-fields">
-                            <div class="form-group">
-                                <label>Título del Slide</label>
-                                <input type="text" id="slideTitle" maxlength="40" placeholder="Ej: Flores Frescas">
-                            </div>
-                            <div class="form-group">
-                                <label>Descripción corta</label>
-                                <input type="text" id="slideDescription" maxlength="60" placeholder="Texto descriptivo...">
-                            </div>
-                            <button type="submit" class="btn-primary">➕ Agregar Slide</button>
-                        </div>
-                    </div>
-                </form>
-
-                <div class="table-responsive" style="margin-top: 20px;">
-                    <table class="product-table">
-                        <thead>
-                            <tr>
-                                <th>Vista Previa</th>
-                                <th>Info</th>
-                                <th>Acciones</th>
-                            </tr>
-                        </thead>
-                        <tbody id="slidesTableBody"></tbody>
-                    </table>
+                <div id="content-orders" class="p-6 hidden">
+                    <!-- Orders list -->
                 </div>
-            </div>
-
-            <!-- Gestión de Datos -->
-            <div class="admin-section danger-zone">
-                <h2>⚠️ Zona de Peligro</h2>
-                <div class="data-actions">
-                    <div class="action-box">
-                        <h4>📥 Importar Datos</h4>
-                        <p>Restaura desde archivo de respaldo anterior</p>
-                        <input type="file" id="importFile" accept=".json" onchange="importData(this)" class="file-input">
-                    </div>
-                    
-                    <div class="action-box">
-                        <h4>🗑️ Limpiar Imágenes</h4>
-                        <p>Borra solo las fotos para liberar espacio</p>
-                        <button onclick="clearImagesOnly()" class="btn-warning">Limpiar Imágenes</button>
-                    </div>
-                    
-                    <div class="action-box">
-                        <h4>💥 Borrar TODO</h4>
-                        <p class="danger-text">Elimina productos, categorías y slides</p>
-                        <button onclick="clearAllData()" class="btn-danger">Borrar Todo</button>
-                    </div>
+                <div id="content-slides" class="p-6 hidden">
+                    <!-- Hero slides management -->
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Loading Overlay -->
-    <div id="loadingOverlay" class="loading-overlay" style="display: none;">
-        <div class="spinner"></div>
-        <p>Procesando...</p>
+    <!-- Product Modal -->
+    <div id="productModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div class="p-6 border-b flex justify-between items-center">
+                <h3 class="text-lg font-bold text-gray-900" id="modalTitle">Nuevo Producto</h3>
+                <button onclick="closeProductModal()" class="text-gray-400 hover:text-gray-600">
+                    <i data-lucide="x" class="w-6 h-6"></i>
+                </button>
+            </div>
+            
+            <form id="productForm" onsubmit="saveProduct(event)" class="p-6 space-y-6">
+                <input type="hidden" id="productId">
+                
+                <!-- Image Upload -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Imagen del producto</label>
+                    <div class="border-2 border-dashed border-gray-300 rounded-xl p-8 text-center hover:border-pink-500 transition cursor-pointer relative" onclick="document.getElementById('productImage').click()">
+                        <input type="file" id="productImage" accept="image/*" class="hidden" onchange="previewImage(this)">
+                        <div id="imagePreviewContainer" class="hidden">
+                            <img id="imagePreview" class="max-h-48 mx-auto rounded-lg">
+                        </div>
+                        <div id="imagePlaceholder" class="text-gray-500">
+                            <i data-lucide="upload-cloud" class="w-12 h-12 mx-auto mb-2"></i>
+                            <p>Click para subir imagen</p>
+                            <p class="text-sm text-gray-400">JPG, PNG hasta 5MB</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="grid md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Nombre *</label>
+                        <input type="text" id="prodName" required class="w-full px-4 py-2 rounded-lg border border-gray-300 focus:border-pink-500 focus:ring-2 focus:ring-pink-200 outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Categoría *</label>
+                        <select id="prodCategory" required class="w-full px-4 py-2 rounded-lg border border-gray-300 focus:border-pink-500 focus:ring-2 focus:ring-pink-200 outline-none">
+                            <!-- Dinámico -->
+                        </select>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Descripción</label>
+                    <textarea id="prodDescription" rows="3" class="w-full px-4 py-2 rounded-lg border border-gray-300 focus:border-pink-500 focus:ring-2 focus:ring-pink-200 outline-none resize-none"></textarea>
+                </div>
+
+                <div class="grid md:grid-cols-3 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Precio regular *</label>
+                        <input type="number" id="prodPrice" required min="0" class="w-full px-4 py-2 rounded-lg border border-gray-300 focus:border-pink-500 focus:ring-2 focus:ring-pink-200 outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Precio oferta</label>
+                        <input type="number" id="prodSalePrice" min="0" class="w-full px-4 py-2 rounded-lg border border-gray-300 focus:border-pink-500 focus:ring-2 focus:ring-pink-200 outline-none">
+                    </div>
+                    <div class="flex items-center">
+                        <label class="flex items-center gap-2 cursor-pointer mt-6">
+                            <input type="checkbox" id="prodOnSale" class="w-5 h-5 text-pink-600 rounded focus:ring-pink-500">
+                            <span class="text-sm font-medium text-gray-700">Mostrar precio oferta</span>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="flex justify-end gap-3 pt-4">
+                    <button type="button" onclick="closeProductModal()" class="px-6 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition">
+                        Cancelar
+                    </button>
+                    <button type="submit" class="px-6 py-2 bg-pink-600 text-white rounded-lg hover:bg-pink-700 transition">
+                        Guardar Producto
+                    </button>
+                </div>
+            </form>
+        </div>
     </div>
 
-    <script src="js/db.js"></script>
-    <script src="js/admin.js"></script>
+    <script>
+        // ==========================================
+        // CONFIGURACIÓN FIREBASE (MISMA QUE INDEX)
+        // ==========================================
+        const firebaseConfig = {
+            apiKey: "TU_API_KEY",
+            authDomain: "TU_PROYECTO.firebaseapp.com",
+            projectId: "TU_PROYECTO",
+            storageBucket: "TU_PROYECTO.appspot.com",
+            messagingSenderId: "TU_SENDER_ID",
+            appId: "TU_APP_ID"
+        };
+
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+        const storage = firebase.storage();
+        const auth = firebase.auth();
+
+        let currentUser = null;
+        let editingProductId = null;
+
+        // ==========================================
+        // AUTENTICACIÓN
+        // ==========================================
+        auth.onAuthStateChanged(user => {
+            if (user) {
+                currentUser = user;
+                document.getElementById('loginScreen').classList.add('hidden');
+                document.getElementById('dashboard').classList.remove('hidden');
+                document.getElementById('userEmail').textContent = user.email;
+                initDashboard();
+            } else {
+                document.getElementById('loginScreen').classList.remove('hidden');
+                document.getElementById('dashboard').classList.add('hidden');
+            }
+            lucide.createIcons();
+        });
+
+        function login() {
+            const email = document.getElementById('loginEmail').value;
+            const password = document.getElementById('loginPassword').value;
+            const errorEl = document.getElementById('loginError');
+            
+            auth.signInWithEmailAndPassword(email, password)
+                .catch(error => {
+                    errorEl.textContent = 'Credenciales incorrectas';
+                    errorEl.classList.remove('hidden');
+                });
+        }
+
+        function logout() {
+            auth.signOut();
+        }
+
+        // ==========================================
+        // DASHBOARD
+        // ==========================================
+        async function initDashboard() {
+            loadStats();
+            loadProducts();
+            loadCategories();
+        }
+
+        async function loadStats() {
+            // Productos
+            const productsSnap = await db.collection('products').get();
+            document.getElementById('statProducts').textContent = productsSnap.size;
+            
+            // Pedidos de hoy
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            const ordersSnap = await db.collection('orders')
+                .where('createdAt', '>=', today)
+                .get();
+            document.getElementById('statOrders').textContent = ordersSnap.size;
+            
+            // Ventas
+            let revenue = 0;
+            ordersSnap.forEach(doc => {
+                revenue += doc.data().total || 0;
+            });
+            document.getElementById('statRevenue').textContent = '₡' + revenue.toLocaleString();
+        }
+
+        async function loadProducts() {
+            const snapshot = await db.collection('products').orderBy('createdAt', 'desc').get();
+            const tbody = document.getElementById('productsTable');
+            
+            tbody.innerHTML = snapshot.docs.map(doc => {
+                const p = doc.data();
+                const price = p.onSale && p.salePrice ? p.salePrice : p.price;
+                
+                return `
+                    <tr>
+                        <td class="px-4 py-3">
+                            <div class="flex items-center gap-3">
+                                <img src="${p.imageUrl || '/api/placeholder/50/50'}" class="w-12 h-12 rounded-lg object-cover bg-gray-100">
+                                <span class="font-medium text-gray-900">${p.name}</span>
+                            </div>
+                        </td>
+                        <td class="px-4 py-3 text-gray-600">${p.categoryName || '-'}</td>
+                        <td class="px-4 py-3">
+                            <span class="font-semibold">₡${price.toLocaleString()}</span>
+                            ${p.onSale ? '<span class="text-xs text-red-600 ml-1">OFERTA</span>' : ''}
+                        </td>
+                        <td class="px-4 py-3">
+                            <span class="px-2 py-1 rounded-full text-xs font-medium ${p.active ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}">
+                                ${p.active ? 'Activo' : 'Inactivo'}
+                            </span>
+                        </td>
+                        <td class="px-4 py-3 text-right">
+                            <button onclick="editProduct('${doc.id}')" class="text-blue-600 hover:text-blue-800 mr-3">
+                                <i data-lucide="edit" class="w-4 h-4"></i>
+                            </button>
+                            <button onclick="toggleProduct('${doc.id}', ${!p.active})" class="text-gray-600 hover:text-gray-800 mr-3">
+                                <i data-lucide="${p.active ? 'eye-off' : 'eye'}" class="w-4 h-4"></i>
+                            </button>
+                            <button onclick="deleteProduct('${doc.id}')" class="text-red-600 hover:text-red-800">
+                                <i data-lucide="trash-2" class="w-4 h-4"></i>
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+            
+            lucide.createIcons();
+        }
+
+        async function loadCategories() {
+            const snapshot = await db.collection('categories').orderBy('order').get();
+            const select = document.getElementById('prodCategory');
+            select.innerHTML = '<option value="">Seleccionar...</option>' +
+                snapshot.docs.map(doc => `<option value="${doc.id}">${doc.data().name}</option>`).join('');
+        }
+
+        // ==========================================
+        // PRODUCTOS
+        // ==========================================
+        function openProductModal(productId = null) {
+            editingProductId = productId;
+            document.getElementById('modalTitle').textContent = productId ? 'Editar Producto' : 'Nuevo Producto';
+            document.getElementById('productModal').classList.remove('hidden');
+            
+            if (!productId) {
+                document.getElementById('productForm').reset();
+                document.getElementById('imagePreviewContainer').classList.add('hidden');
+                document.getElementById('imagePlaceholder').classList.remove('hidden');
+            }
+        }
+
+        function closeProductModal() {
+            document.getElementById('productModal').classList.add('hidden');
+            editingProductId = null;
+        }
+
+        function previewImage(input) {
+            const file = input.files[0];
+            if (!file) return;
+            
+            const reader = new FileReader();
+            reader.onload = e => {
+                document.getElementById('imagePreview').src = e.target.result;
+                document.getElementById('imagePreviewContainer').classList.remove('hidden');
+                document.getElementById('imagePlaceholder').classList.add('hidden');
+            };
+            reader.readAsDataURL(file);
+        }
+
+        async function saveProduct(e) {
+            e.preventDefault();
+            
+            const file = document.getElementById('productImage').files[0];
+            let imageUrl = null;
+            
+            // Subir imagen si hay nueva
+            if (file) {
+                const storageRef = storage.ref(`products/${Date.now()}_${file.name}`);
+                await storageRef.put(file);
+                imageUrl = await storageRef.getDownloadURL();
+            }
+            
+            const productData = {
+                name: document.getElementById('prodName').value,
+                categoryId: document.getElementById('prodCategory').value,
+                categoryName: document.getElementById('prodCategory').options[document.getElementById('prodCategory').selectedIndex].text,
+                description: document.getElementById('prodDescription').value,
+                price: parseInt(document.getElementById('prodPrice').value),
+                salePrice: parseInt(document.getElementById('prodSalePrice').value) || 0,
+                onSale: document.getElementById('prodOnSale').checked,
+                active: true,
+                updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+            };
+            
+            if (imageUrl) productData.imageUrl = imageUrl;
+            
+            if (editingProductId) {
+                await db.collection('products').doc(editingProductId).update(productData);
+            } else {
+                productData.createdAt = firebase.firestore.FieldValue.serverTimestamp();
+                await db.collection('products').add(productData);
+            }
+            
+            closeProductModal();
+            loadProducts();
+            loadStats();
+        }
+
+        async function toggleProduct(id, active) {
+            await db.collection('products').doc(id).update({ active });
+            loadProducts();
+        }
+
+        async function deleteProduct(id) {
+            if (!confirm('¿Eliminar permanentemente?')) return;
+            await db.collection('products').doc(id).delete();
+            loadProducts();
+            loadStats();
+        }
+
+        // ==========================================
+        // TABS
+        // ==========================================
+        function showTab(tab) {
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.classList.remove('text-pink-600', 'border-b-2', 'border-pink-600');
+                btn.classList.add('text-gray-600');
+            });
+            document.getElementById(`tab-${tab}`).classList.add('text-pink-600', 'border-b-2', 'border-pink-600');
+            document.getElementById(`tab-${tab}`).classList.remove('text-gray-600');
+            
+            document.querySelectorAll('[id^="content-"]').forEach(el => el.classList.add('hidden'));
+            document.getElementById(`content-${tab}`).classList.remove('hidden');
+        }
+    </script>
 </body>
 </html>
