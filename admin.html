@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Panel Administración - Floristería Santa Bárbara</title>
+    <meta name="robots" content="noindex, nofollow">
+    <link rel="stylesheet" href="css/styles.css">
+    <link rel="stylesheet" href="css/admin.css">
+</head>
+<body class="admin-body">
+    <div class="admin-container">
+        <!-- Login Screen -->
+        <div id="loginScreen" class="login-screen">
+            <div class="login-box">
+                <h2>🔐 Acceso Administrativo</h2>
+                <div class="form-group">
+                    <label>Contraseña</label>
+                    <input type="password" id="adminPassword" placeholder="Ingresa contraseña">
+                </div>
+                <button onclick="login()" class="btn-primary">Ingresar</button>
+                <p class="login-hint">Hint: flor2024</p>
+            </div>
+        </div>
+
+        <!-- Admin Panel (Hidden by default) -->
+        <div id="adminPanel" style="display: none;">
+            <div class="admin-header">
+                <div>
+                    <h1>🌸 Panel de Administración</h1>
+                    <p id="lastBackup">Último respaldo: Nunca</p>
+                </div>
+                <div class="header-actions">
+                    <button onclick="window.open('index.html', '_blank')" class="btn-secondary">🌐 Ver Tienda</button>
+                    <button onclick="exportData()" class="btn-success">📥 Exportar Datos</button>
+                    <button onclick="logout()" class="btn-danger">Cerrar Sesión</button>
+                </div>
+            </div>
+
+            <div id="alertContainer"></div>
+
+            <!-- Estadísticas -->
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-number" id="statProducts">0</div>
+                    <div class="stat-label">Productos Activos</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="statCategories">0</div>
+                    <div class="stat-label">Categorías</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="statSlides">0</div>
+                    <div class="stat-label">Slides</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="statStorage">0</div>
+                    <div class="stat-label">KB Usados</div>
+                </div>
+            </div>
+
+            <!-- Categorías -->
+            <div class="admin-section">
+                <h2>🏷️ Gestión de Categorías</h2>
+                <div class="category-management" id="categoryList"></div>
+                <div class="add-category-form">
+                    <input type="text" id="newCategoryName" placeholder="Nueva categoría..." maxlength="30">
+                    <button onclick="addCategory()" class="btn-primary">➕ Agregar</button>
+                </div>
+            </div>
+
+            <!-- Productos -->
+            <div class="admin-section">
+                <h2 id="productFormTitle">➕ Nuevo Producto</h2>
+                <form id="productForm" onsubmit="saveProduct(event)">
+                    <input type="hidden" id="productId">
+                    
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label>Imagen del Producto *</label>
+                            <div class="image-upload-area" id="imageUploadArea" onclick="document.getElementById('productImage').click()">
+                                <input type="file" id="productImage" class="image-upload-input" accept="image/jpeg,image/png,image/jpg" onchange="previewImage(this)" capture="environment">
+                                <div class="upload-placeholder" id="uploadPlaceholder">
+                                    <span class="icon">📷</span>
+                                    <div>Toca para subir foto</div>
+                                    <small>Desde celular o PC. Máx. 2MB</small>
+                                </div>
+                                <img id="imagePreview" style="display: none;">
+                                <button type="button" class="remove-image-btn" id="removeImageBtn" onclick="removeImage(event)" style="display: none;">✕</button>
+                            </div>
+                        </div>
+                        
+                        <div class="form-fields">
+                            <div class="form-group">
+                                <label>Nombre del Producto *</label>
+                                <input type="text" id="productName" required maxlength="50" placeholder="Ej: Ramo de 12 Rosas Rojas">
+                            </div>
+                            
+                            <div class="form-group">
+                                <label>Categoría *</label>
+                                <select id="productCategory" required>
+                                    <option value="">Selecciona categoría</option>
+                                </select>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label>Descripción</label>
+                                <textarea id="productDescription" rows="2" maxlength="150" placeholder="Descripción corta del producto..."></textarea>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="price-section">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Precio Regular (₡) *</label>
+                                <input type="number" id="productPrice" required min="1000" placeholder="25000">
+                            </div>
+                            <div class="form-group">
+                                <label>Precio Temporada (₡)</label>
+                                <input type="number" id="productSeasonalPrice" min="0" placeholder="22000">
+                            </div>
+                        </div>
+
+                        <div class="price-toggle-admin">
+                            <label>¿Mostrar precio de temporada por defecto?</label>
+                            <label class="switch">
+                                <input type="checkbox" id="seasonalToggle">
+                                <span class="slider round"></span>
+                            </label>
+                            <span id="seasonalLabel">No</span>
+                        </div>
+                        <small class="toggle-hint">Si activas esto, los clientes verán el precio de temporada como principal</small>
+                    </div>
+
+                    <div class="form-actions">
+                        <button type="submit" class="btn-primary" id="saveProductBtn">💾 Guardar Producto</button>
+                        <button type="button" onclick="resetProductForm()" class="btn-secondary">Cancelar</button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Lista de Productos -->
+            <div class="admin-section">
+                <h2>📦 Inventario de Productos</h2>
+                <div class="table-responsive">
+                    <table class="product-table">
+                        <thead>
+                            <tr>
+                                <th>Foto</th>
+                                <th>Producto</th>
+                                <th>Categoría</th>
+                                <th>Precio Mostrado</th>
+                                <th>Alternativo</th>
+                                <th>Estado</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="productsTableBody"></tbody>
+                    </table>
+                </div>
+                <div id="emptyProducts" class="empty-state" style="display: none;">
+                    <div class="icon">📭</div>
+                    <p>No hay productos registrados</p>
+                </div>
+            </div>
+
+            <!-- Carrusel -->
+            <div class="admin-section">
+                <h2>🎠 Carrusel de Inicio</h2>
+                <form id="slideForm" onsubmit="addSlide(event)">
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label>Imagen del Slide (1200×400 ideal) *</label>
+                            <div class="image-upload-area" id="slideUploadArea" onclick="document.getElementById('slideImage').click()">
+                                <input type="file" id="slideImage" class="image-upload-input" accept="image/jpeg,image/png" onchange="previewSlideImage(this)">
+                                <div class="upload-placeholder" id="slideUploadPlaceholder">
+                                    <span class="icon">🖼️</span>
+                                    <div>Click para subir banner</div>
+                                    <small>Formato panorámico recomendado</small>
+                                </div>
+                                <img id="slideImagePreview" style="display: none;">
+                            </div>
+                        </div>
+                        <div class="form-fields">
+                            <div class="form-group">
+                                <label>Título del Slide</label>
+                                <input type="text" id="slideTitle" maxlength="40" placeholder="Ej: Flores Frescas">
+                            </div>
+                            <div class="form-group">
+                                <label>Descripción corta</label>
+                                <input type="text" id="slideDescription" maxlength="60" placeholder="Texto descriptivo...">
+                            </div>
+                            <button type="submit" class="btn-primary">➕ Agregar Slide</button>
+                        </div>
+                    </div>
+                </form>
+
+                <div class="table-responsive" style="margin-top: 20px;">
+                    <table class="product-table">
+                        <thead>
+                            <tr>
+                                <th>Vista Previa</th>
+                                <th>Info</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="slidesTableBody"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Gestión de Datos -->
+            <div class="admin-section danger-zone">
+                <h2>⚠️ Zona de Peligro</h2>
+                <div class="data-actions">
+                    <div class="action-box">
+                        <h4>📥 Importar Datos</h4>
+                        <p>Restaura desde archivo de respaldo anterior</p>
+                        <input type="file" id="importFile" accept=".json" onchange="importData(this)" class="file-input">
+                    </div>
+                    
+                    <div class="action-box">
+                        <h4>🗑️ Limpiar Imágenes</h4>
+                        <p>Borra solo las fotos para liberar espacio</p>
+                        <button onclick="clearImagesOnly()" class="btn-warning">Limpiar Imágenes</button>
+                    </div>
+                    
+                    <div class="action-box">
+                        <h4>💥 Borrar TODO</h4>
+                        <p class="danger-text">Elimina productos, categorías y slides</p>
+                        <button onclick="clearAllData()" class="btn-danger">Borrar Todo</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Loading Overlay -->
+    <div id="loadingOverlay" class="loading-overlay" style="display: none;">
+        <div class="spinner"></div>
+        <p>Procesando...</p>
+    </div>
+
+    <script src="js/db.js"></script>
+    <script src="js/admin.js"></script>
+</body>
+</html>
