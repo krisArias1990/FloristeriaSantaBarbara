@@ -2,265 +2,1194 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Floristería Santa Bárbara - Flores Frescas</title>
-    <meta name="description" content="Floristería en Santa Bárbara, Heredia. Envío a domicilio de arreglos florales, rosas, girasoles y más.">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
+    <title>Floristería Santa Bárbara | Envío de Flores en Heredia</title>
+    <meta name="description" content="Floristería en Santa Bárbara, Heredia. Arreglos florales frescos, rosas, girasoles. Envío a domicilio el mismo día. Del parqueo de Pali 100m sur.">
+    <meta name="keywords" content="floristería Santa Bárbara, flores Heredia, envío flores Costa Rica, arreglos florales">
     
-    <!-- Leaflet CSS -->
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+    <!-- Open Graph -->
+    <meta property="og:title" content="Floristería Santa Bárbara">
+    <meta property="og:description" content="Arreglos florales frescos con envío a domicilio en Santa Bárbara, Heredia">
+    <meta property="og:image" content="https://firebasestorage.googleapis.com/v0/b/tu-proyecto.appspot.com/o/logo.jpg?alt=media">
     
-    <link rel="stylesheet" href="css/styles.css">
+    <!-- Favicon -->
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌸</text></svg>">
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Firebase -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-storage-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+    
+    <!-- Leaflet -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
+        
+        * { font-family: 'Poppins', sans-serif; }
+        
+        .gradient-pink { background: linear-gradient(135deg, #ec4899 0%, #be185d 100%); }
+        .gradient-hero { background: linear-gradient(135deg, #fce7f3 0%, #fbcfe8 50%, #f9a8d4 100%); }
+        
+        .product-card { transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+        .product-card:hover { transform: translateY(-8px); box-shadow: 0 20px 40px rgba(236, 72, 153, 0.15); }
+        
+        .cart-badge { animation: pulse 2s infinite; }
+        @keyframes pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.05); } }
+        
+        .loading-skeleton { 
+            background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+            background-size: 200% 100%;
+            animation: loading 1.5s infinite;
+        }
+        @keyframes loading { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+        
+        .modal-enter { animation: modalIn 0.3s ease-out; }
+        @keyframes modalIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
+        
+        .toast { animation: slideUp 0.3s ease-out; }
+        @keyframes slideUp { from { transform: translateX(-50%) translateY(100%); opacity: 0; } to { transform: translateX(-50%) translateY(0); opacity: 1; } }
+        
+        /* Mapa */
+        #map { height: 300px; border-radius: 12px; z-index: 1; }
+        .leaflet-control-attribution { font-size: 10px; }
+        
+        /* Scrollbar */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #f1f1f1; }
+        ::-webkit-scrollbar-thumb { background: #ec4899; border-radius: 4px; }
+        
+        /* Ocultar elementos hasta cargar */
+        .firebase-loading { opacity: 0.5; pointer-events: none; }
+    </style>
 </head>
-<body>
-    <!-- Header -->
-    <header class="main-header">
-        <div class="container">
-            <div class="logo">
-                <h1>🌸 Floristería Santa Bárbara</h1>
+<body class="bg-gray-50">
+    <!-- Navbar -->
+    <nav class="fixed w-full bg-white/95 backdrop-blur-md shadow-sm z-50 transition-all" id="navbar">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center h-16">
+                <!-- Logo -->
+                <div class="flex items-center space-x-2 cursor-pointer" onclick="window.scrollTo(0,0)">
+                    <span class="text-3xl">🌸</span>
+                    <div>
+                        <h1 class="text-xl font-bold text-gray-900 leading-tight">Santa Bárbara</h1>
+                        <p class="text-xs text-pink-600 font-medium">Floristería</p>
+                    </div>
+                </div>
+                
+                <!-- Desktop Menu -->
+                <div class="hidden md:flex items-center space-x-8">
+                    <a href="#inicio" class="text-gray-700 hover:text-pink-600 font-medium transition">Inicio</a>
+                    <a href="#productos" class="text-gray-700 hover:text-pink-600 font-medium transition">Productos</a>
+                    <a href="#nosotros" class="text-gray-700 hover:text-pink-600 font-medium transition">Nosotros</a>
+                    <a href="#contacto" class="text-gray-700 hover:text-pink-600 font-medium transition">Contacto</a>
+                </div>
+                
+                <!-- Actions -->
+                <div class="flex items-center space-x-4">
+                    <button onclick="toggleCart()" class="relative p-2 hover:bg-pink-50 rounded-full transition group">
+                        <i data-lucide="shopping-bag" class="w-6 h-6 text-gray-700 group-hover:text-pink-600"></i>
+                        <span id="cartCount" class="absolute -top-1 -right-1 bg-pink-600 text-white text-xs font-bold w-5 h-5 rounded-full flex items-center justify-center cart-badge hidden">0</span>
+                    </button>
+                    
+                    <button onclick="toggleMobileMenu()" class="md:hidden p-2 hover:bg-pink-50 rounded-full">
+                        <i data-lucide="menu" class="w-6 h-6 text-gray-700"></i>
+                    </button>
+                </div>
             </div>
-            <nav class="main-nav" id="mainNav">
-                <ul>
-                    <li><a href="#inicio" onclick="closeMenu()">Inicio</a></li>
-                    <li><a href="#productos" onclick="closeMenu()">Productos</a></li>
-                    <li><a href="#nosotros" onclick="closeMenu()">Nosotros</a></li>
-                    <li><a href="#contacto" onclick="closeMenu()">Contacto</a></li>
-                </ul>
-            </nav>
-            <div class="header-actions">
-                <button class="cart-btn" id="cartBtn" onclick="toggleCart()" aria-label="Ver carrito">
-                    🛒 <span class="cart-count" id="cartCount">0</span>
+        </div>
+        
+        <!-- Mobile Menu -->
+        <div id="mobileMenu" class="hidden md:hidden bg-white border-t">
+            <div class="px-4 pt-2 pb-4 space-y-1">
+                <a href="#inicio" class="block px-3 py-2 text-gray-700 hover:bg-pink-50 rounded-md">Inicio</a>
+                <a href="#productos" class="block px-3 py-2 text-gray-700 hover:bg-pink-50 rounded-md">Productos</a>
+                <a href="#nosotros" class="block px-3 py-2 text-gray-700 hover:bg-pink-50 rounded-md">Nosotros</a>
+                <a href="#contacto" class="block px-3 py-2 text-gray-700 hover:bg-pink-50 rounded-md">Contacto</a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section id="inicio" class="gradient-hero pt-24 pb-12 md:pt-32 md:pb-20">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="grid md:grid-cols-2 gap-12 items-center">
+                <div class="space-y-6">
+                    <div class="inline-flex items-center px-4 py-2 bg-white/80 backdrop-blur rounded-full text-pink-700 text-sm font-medium shadow-sm">
+                        <span class="w-2 h-2 bg-green-500 rounded-full mr-2 animate-pulse"></span>
+                        Abierto ahora · Cierra 7:00 p.m.
+                    </div>
+                    <h2 class="text-4xl md:text-6xl font-bold text-gray-900 leading-tight">
+                        Llevamos <span class="text-transparent bg-clip-text gradient-pink">emociones</span> en cada flor
+                    </h2>
+                    <p class="text-lg text-gray-600 max-w-lg">
+                        Arreglos florales frescos elaborados con amor. Envío el mismo día en Santa Bárbara, Heredia y alrededores.
+                    </p>
+                    <div class="flex flex-wrap gap-4">
+                        <a href="#productos" class="gradient-pink text-white px-8 py-4 rounded-full font-semibold shadow-lg hover:shadow-xl transform hover:-translate-y-1 transition inline-flex items-center gap-2">
+                            <i data-lucide="flower-2" class="w-5 h-5"></i>
+                            Ver Productos
+                        </a>
+                        <a href="https://wa.me/50686053613" target="_blank" class="bg-white text-gray-800 px-8 py-4 rounded-full font-semibold shadow-md hover:shadow-lg transition inline-flex items-center gap-2 border">
+                            <i data-lucide="message-circle" class="w-5 h-5 text-green-600"></i>
+                            WhatsApp
+                        </a>
+                    </div>
+                    
+                    <!-- Stats -->
+                    <div class="flex gap-8 pt-4">
+                        <div>
+                            <div class="text-2xl font-bold text-gray-900">5+</div>
+                            <div class="text-sm text-gray-600">Años de experiencia</div>
+                        </div>
+                        <div>
+                            <div class="text-2xl font-bold text-gray-900">100%</div>
+                            <div class="text-sm text-gray-600">Flores frescas</div>
+                        </div>
+                        <div>
+                            <div class="text-2xl font-bold text-gray-900">El mismo día</div>
+                            <div class="text-sm text-gray-600">Entrega rápida</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Hero Image/Slider -->
+                <div class="relative">
+                    <div id="heroSlider" class="relative rounded-3xl overflow-hidden shadow-2xl aspect-[4/3] bg-gray-200">
+                        <!-- Se carga dinámicamente desde Firebase -->
+                        <div class="absolute inset-0 flex items-center justify-center text-gray-400">
+                            <div class="text-center">
+                                <i data-lucide="image" class="w-16 h-16 mx-auto mb-2 opacity-50"></i>
+                                <p>Cargando imágenes...</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Floating Card -->
+                    <div class="absolute -bottom-6 -left-6 bg-white p-4 rounded-2xl shadow-xl max-w-xs hidden md:block">
+                        <div class="flex items-center gap-3">
+                            <div class="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
+                                <i data-lucide="truck" class="w-6 h-6 text-green-600"></i>
+                            </div>
+                            <div>
+                                <p class="font-semibold text-gray-900">Envío Gratis</p>
+                                <p class="text-sm text-gray-600">En compras mayores a ₡25,000</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Categories -->
+    <section class="py-8 bg-white border-b">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div id="categoryFilters" class="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
+                <button onclick="filterProducts('todos')" class="category-btn active whitespace-nowrap px-6 py-3 rounded-full font-medium transition-all bg-pink-600 text-white shadow-md">
+                    Todos
                 </button>
-                <button class="menu-toggle" id="menuToggle" onclick="toggleMenu()" aria-label="Menú">☰</button>
-            </div>
-        </div>
-    </header>
-
-    <!-- Carousel -->
-    <section class="carousel" id="inicio">
-        <div class="carousel-container" id="carouselContainer">
-            <!-- Slides cargados dinámicamente -->
-        </div>
-        <div class="carousel-controls">
-            <button onclick="moveCarousel(-1)" aria-label="Anterior">‹</button>
-            <button onclick="moveCarousel(1)" aria-label="Siguiente">›</button>
-        </div>
-    </section>
-
-    <!-- Productos -->
-    <section class="products-section" id="productos">
-        <div class="container">
-            <h2>Nuestros Productos</h2>
-            <div class="category-filters" id="categoryFilters">
-                <button class="active" onclick="filterProducts('todos')">Todos</button>
-            </div>
-            <div class="product-grid" id="productGrid">
-                <!-- Productos cargados dinámicamente -->
+                <!-- Categorías se cargan dinámicamente -->
             </div>
         </div>
     </section>
 
-    <!-- Nosotros -->
-    <section class="about-section" id="nosotros">
-        <div class="container">
-            <h2>Sobre Nosotros</h2>
-            <p>Más de 10 años llevando alegría y color a Santa Bárbara y alrededores. Especialistas en arreglos personalizados para toda ocasión.</p>
-        </div>
-    </section>
-
-    <!-- Contacto -->
-    <section class="contact-section" id="contacto">
-        <div class="container">
-            <h2>Contacto</h2>
-            <p>📍 Santa Bárbara, Heredia, Costa Rica</p>
-            <p>📱 WhatsApp: 8605-3613</p>
-        </div>
-    </section>
-
-    <!-- Modal del Carrito -->
-    <div class="modal" id="cartModal" onclick="closeModalOnClickOutside(event)">
-        <div class="modal-content cart-modal" onclick="event.stopPropagation()">
-            <span class="close-btn" onclick="toggleCart()">&times;</span>
-            <h2>🛒 Tu Carrito</h2>
-            <div id="cartItems" class="cart-items">
-                <p class="empty-cart-msg">Tu carrito está vacío</p>
+    <!-- Products -->
+    <section id="productos" class="py-16 bg-gray-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center mb-12">
+                <h3 class="text-3xl font-bold text-gray-900 mb-4">Nuestros Productos</h3>
+                <p class="text-gray-600 max-w-2xl mx-auto">Arreglos elaborados con flores 100% frescas, importadas y nacionales de la más alta calidad.</p>
             </div>
-            <div class="cart-summary" id="cartSummary" style="display: none;">
-                <div class="summary-row">
-                    <span>Subtotal:</span>
-                    <span id="subtotal">₡0</span>
-                </div>
-                <div class="summary-row">
-                    <span>Envío:</span>
-                    <span id="shippingCost">₡0</span>
-                </div>
-                <div class="summary-row total">
-                    <span>Total:</span>
-                    <span id="total">₡0</span>
+            
+            <div id="productsGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
+                <!-- Productos se cargan dinámicamente -->
+                <div class="col-span-full text-center py-12">
+                    <div class="loading-skeleton w-16 h-16 rounded-full mx-auto mb-4"></div>
+                    <p class="text-gray-500">Cargando productos...</p>
                 </div>
             </div>
-            <button class="checkout-btn" id="checkoutBtn" onclick="openCheckout()" disabled>Proceder al Pago</button>
+        </div>
+    </section>
+
+    <!-- About -->
+    <section id="nosotros" class="py-16 bg-white">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="grid md:grid-cols-2 gap-12 items-center">
+                <div class="relative">
+                    <img src="https://images.unsplash.com/photo-1562690868-60bbe7293e94?w=800&h=600&fit=crop" alt="Floristería" class="rounded-3xl shadow-2xl w-full object-cover aspect-[4/3]">
+                    <div class="absolute -bottom-6 -right-6 bg-pink-600 text-white p-6 rounded-2xl shadow-xl hidden md:block">
+                        <div class="text-3xl font-bold">5+</div>
+                        <div class="text-sm opacity-90">Años brindando<br>alegría</div>
+                    </div>
+                </div>
+                <div class="space-y-6">
+                    <h3 class="text-3xl font-bold text-gray-900">¿Quiénes somos?</h3>
+                    <p class="text-gray-600 text-lg leading-relaxed">
+                        Floristería Santa Bárbara nació del amor por las flores y el deseo de llevar sonrisas a cada hogar. Ubicados estratégicamente del parqueo de Pali, 100 metros sur, en una casa esquinera color verde.
+                    </p>
+                    <div class="space-y-4">
+                        <div class="flex items-start gap-4">
+                            <div class="w-12 h-12 bg-pink-100 rounded-xl flex items-center justify-center flex-shrink-0">
+                                <i data-lucide="map-pin" class="w-6 h-6 text-pink-600"></i>
+                            </div>
+                            <div>
+                                <h4 class="font-semibold text-gray-900">Ubicación Privilegiada</h4>
+                                <p class="text-gray-600">Santa Bárbara de Heredia, 100m sur del parqueo de Pali. Casa esquinera verde.</p>
+                            </div>
+                        </div>
+                        <div class="flex items-start gap-4">
+                            <div class="w-12 h-12 bg-pink-100 rounded-xl flex items-center justify-center flex-shrink-0">
+                                <i data-lucide="clock" class="w-6 h-6 text-pink-600"></i>
+                            </div>
+                            <div>
+                                <h4 class="font-semibold text-gray-900">Horario Extendido</h4>
+                                <p class="text-gray-600">Lunes a Sábado: 8:00 a.m. - 7:00 p.m.<br>Domingos: 9:00 a.m. - 5:00 p.m.</p>
+                            </div>
+                        </div>
+                        <div class="flex items-start gap-4">
+                            <div class="w-12 h-12 bg-pink-100 rounded-xl flex items-center justify-center flex-shrink-0">
+                                <i data-lucide="phone" class="w-6 h-6 text-pink-600"></i>
+                            </div>
+                            <div>
+                                <h4 class="font-semibold text-gray-900">Atención Personalizada</h4>
+                                <p class="text-gray-600">8605-3613 · Atención por WhatsApp para pedidos urgentes</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Contact -->
+    <section id="contacto" class="py-16 gradient-hero">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="grid md:grid-cols-2 gap-12">
+                <div>
+                    <h3 class="text-3xl font-bold text-gray-900 mb-6">Contáctanos</h3>
+                    <div class="space-y-6">
+                        <a href="https://maps.google.com/?q=9.8644,-83.9236" target="_blank" class="flex items-center gap-4 p-4 bg-white rounded-2xl shadow-sm hover:shadow-md transition">
+                            <div class="w-12 h-12 bg-red-100 rounded-xl flex items-center justify-center">
+                                <i data-lucide="map-pin" class="w-6 h-6 text-red-600"></i>
+                            </div>
+                            <div>
+                                <p class="font-semibold text-gray-900">Dirección</p>
+                                <p class="text-gray-600 text-sm">Del parqueo de Pali 100m sur, Santa Bárbara, Heredia</p>
+                            </div>
+                        </a>
+                        
+                        <a href="tel:+50686053613" class="flex items-center gap-4 p-4 bg-white rounded-2xl shadow-sm hover:shadow-md transition">
+                            <div class="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center">
+                                <i data-lucide="phone" class="w-6 h-6 text-green-600"></i>
+                            </div>
+                            <div>
+                                <p class="font-semibold text-gray-900">Teléfono</p>
+                                <p class="text-gray-600 text-sm">8605-3613</p>
+                            </div>
+                        </a>
+                        
+                        <a href="https://wa.me/50686053613" target="_blank" class="flex items-center gap-4 p-4 bg-white rounded-2xl shadow-sm hover:shadow-md transition">
+                            <div class="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center">
+                                <i data-lucide="message-circle" class="w-6 h-6 text-green-600"></i>
+                            </div>
+                            <div>
+                                <p class="font-semibold text-gray-900">WhatsApp</p>
+                                <p class="text-gray-600 text-sm">Escríbenos para pedidos urgentes</p>
+                            </div>
+                        </a>
+                        
+                        <a href="https://instagram.com/floristsantabarbara" target="_blank" class="flex items-center gap-4 p-4 bg-white rounded-2xl shadow-sm hover:shadow-md transition">
+                            <div class="w-12 h-12 bg-purple-100 rounded-xl flex items-center justify-center">
+                                <i data-lucide="instagram" class="w-6 h-6 text-purple-600"></i>
+                            </div>
+                            <div>
+                                <p class="font-semibold text-gray-900">Instagram</p>
+                                <p class="text-gray-600 text-sm">@floristsantabarbara</p>
+                            </div>
+                        </a>
+                    </div>
+                </div>
+                
+                <!-- Map -->
+                <div class="bg-white p-4 rounded-3xl shadow-lg">
+                    <div id="contactMap" class="w-full h-96 rounded-2xl"></div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="bg-gray-900 text-white py-12">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="grid md:grid-cols-4 gap-8">
+                <div class="col-span-2">
+                    <div class="flex items-center gap-2 mb-4">
+                        <span class="text-3xl">🌸</span>
+                        <span class="text-xl font-bold">Floristería Santa Bárbara</span>
+                    </div>
+                    <p class="text-gray-400 mb-4">Transformando momentos en memorias eternas desde 2019. Especialistas en arreglos florales para toda ocasión.</p>
+                    <div class="flex gap-4">
+                        <a href="https://instagram.com/floristsantabarbara" target="_blank" class="w-10 h-10 bg-gray-800 rounded-full flex items-center justify-center hover:bg-pink-600 transition">
+                            <i data-lucide="instagram" class="w-5 h-5"></i>
+                        </a>
+                        <a href="https://facebook.com/floristsantabarbara" target="_blank" class="w-10 h-10 bg-gray-800 rounded-full flex items-center justify-center hover:bg-blue-600 transition">
+                            <i data-lucide="facebook" class="w-5 h-5"></i>
+                        </a>
+                        <a href="https://wa.me/50686053613" target="_blank" class="w-10 h-10 bg-gray-800 rounded-full flex items-center justify-center hover:bg-green-600 transition">
+                            <i data-lucide="message-circle" class="w-5 h-5"></i>
+                        </a>
+                    </div>
+                </div>
+                <div>
+                    <h4 class="font-semibold mb-4">Enlaces Rápidos</h4>
+                    <ul class="space-y-2 text-gray-400">
+                        <li><a href="#inicio" class="hover:text-white transition">Inicio</a></li>
+                        <li><a href="#productos" class="hover:text-white transition">Productos</a></li>
+                        <li><a href="#nosotros" class="hover:text-white transition">Nosotros</a></li>
+                        <li><a href="admin.html" class="hover:text-white transition">Administración</a></li>
+                    </ul>
+                </div>
+                <div>
+                    <h4 class="font-semibold mb-4">Horario</h4>
+                    <ul class="space-y-2 text-gray-400">
+                        <li>Lun - Sáb: 8am - 7pm</li>
+                        <li>Domingo: 9am - 5pm</li>
+                        <li class="text-pink-400">Pedidos urgentes: WhatsApp</li>
+                    </ul>
+                </div>
+            </div>
+            <div class="border-t border-gray-800 mt-8 pt-8 text-center text-gray-500 text-sm">
+                © 2024 Floristería Santa Bárbara. Todos los derechos reservados.
+            </div>
+        </div>
+    </footer>
+
+    <!-- Cart Modal -->
+    <div id="cartModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-3xl max-w-md w-full max-h-[90vh] overflow-hidden modal-enter flex flex-col">
+            <div class="p-6 border-b flex justify-between items-center">
+                <h3 class="text-xl font-bold text-gray-900">Tu Carrito</h3>
+                <button onclick="toggleCart()" class="p-2 hover:bg-gray-100 rounded-full">
+                    <i data-lucide="x" class="w-6 h-6"></i>
+                </button>
+            </div>
+            
+            <div id="cartItems" class="flex-1 overflow-y-auto p-6 space-y-4">
+                <!-- Items dinámicos -->
+            </div>
+            
+            <div class="p-6 border-t bg-gray-50">
+                <div class="space-y-2 mb-4">
+                    <div class="flex justify-between text-gray-600">
+                        <span>Subtotal</span>
+                        <span id="cartSubtotal">₡0</span>
+                    </div>
+                    <div class="flex justify-between text-gray-600">
+                        <span>Envío</span>
+                        <span id="cartShipping">Calculado al finalizar</span>
+                    </div>
+                    <div class="flex justify-between text-xl font-bold text-gray-900 pt-2 border-t">
+                        <span>Total</span>
+                        <span id="cartTotal">₡0</span>
+                    </div>
+                </div>
+                <button onclick="openCheckout()" id="checkoutBtn" class="w-full gradient-pink text-white py-4 rounded-xl font-semibold hover:shadow-lg transition disabled:opacity-50 disabled:cursor-not-allowed">
+                    Finalizar Pedido
+                </button>
+            </div>
         </div>
     </div>
 
-    <!-- Modal de Checkout -->
-    <div class="modal" id="checkoutModal" onclick="closeModalOnClickOutside(event)">
-        <div class="modal-content checkout-modal" onclick="event.stopPropagation()">
-            <span class="close-btn" onclick="closeCheckout()">&times;</span>
-            <h2>📝 Finalizar Pedido</h2>
-            
-            <form id="orderForm" onsubmit="processOrder(event)">
-                <!-- Destinatario -->
-                <div class="form-section">
-                    <h3>👤 Datos de quien RECIBE *</h3>
-                    <div class="form-group">
-                        <label for="receiverName">Nombre completo</label>
-                        <input type="text" id="receiverName" required placeholder="Nombre de quien recibe las flores">
-                    </div>
-                    <div class="form-group">
-                        <label for="receiverPhone">Teléfono (8 dígitos)</label>
-                        <input type="tel" id="receiverPhone" required placeholder="88888888" pattern="[0-9]{8}" maxlength="8" oninput="validatePhone(this)">
-                        <small>Ejemplo: 88888888 (sin espacios ni guiones)</small>
-                    </div>
+    <!-- Checkout Modal -->
+    <div id="checkoutModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 hidden overflow-y-auto">
+        <div class="min-h-screen flex items-center justify-center p-4">
+            <div class="bg-white rounded-3xl max-w-2xl w-full modal-enter my-8">
+                <div class="p-6 border-b flex justify-between items-center sticky top-0 bg-white rounded-t-3xl">
+                    <h3 class="text-xl font-bold text-gray-900">Finalizar Pedido</h3>
+                    <button onclick="closeCheckout()" class="p-2 hover:bg-gray-100 rounded-full">
+                        <i data-lucide="x" class="w-6 h-6"></i>
+                    </button>
                 </div>
-
-                <!-- Remitente -->
-                <div class="form-section">
-                    <h3>💝 Datos de quien ENVÍA *</h3>
-                    <div class="form-group">
-                        <label for="senderName">Nombre completo</label>
-                        <input type="text" id="senderName" required placeholder="Tu nombre">
-                    </div>
-                    <div class="form-group">
-                        <label for="senderPhone">Teléfono (8 dígitos)</label>
-                        <input type="tel" id="senderPhone" required placeholder="88888888" pattern="[0-9]{8}" maxlength="8" oninput="validatePhone(this)">
-                    </div>
-                </div>
-
-                <!-- Entrega -->
-                <div class="form-section">
-                    <h3>🚚 Tipo de Entrega *</h3>
-                    <div class="form-group">
-                        <label for="deliveryType">¿Cómo prefieres recibir tu pedido?</label>
-                        <select id="deliveryType" required onchange="toggleDeliveryOptions()">
-                            <option value="">Selecciona una opción</option>
-                            <option value="delivery">🚚 Envío a domicilio</option>
-                            <option value="pickup">🏪 Recoger en tienda</option>
-                        </select>
-                    </div>
-
-                    <div id="deliveryOptions" style="display: none;">
-                        <div class="form-group">
-                            <label for="address">Dirección exacta *</label>
-                            <input type="text" id="address" placeholder="Calle, avenida, número de casa, barrio">
-                        </div>
-                        
-                        <button type="button" class="location-btn" onclick="toggleMap()">
-                            📍 Marcar ubicación exacta en el mapa
-                        </button>
-                        
-                        <div id="map" class="map-container"></div>
-                        
-                        <div id="distanceInfo" class="distance-info">
-                            <div class="distance-details">
-                                <span>📏 Distancia: <strong id="distanceKm">0</strong> km</span>
-                                <span>💰 Costo envío: <strong id="calculatedShipping">₡0</strong></span>
+                
+                <form id="checkoutForm" onsubmit="processOrder(event)" class="p-6 space-y-6">
+                    <!-- Destinatario -->
+                    <div class="space-y-4">
+                        <h4 class="font-semibold text-gray-900 flex items-center gap-2">
+                            <i data-lucide="user" class="w-5 h-5 text-pink-600"></i>
+                            ¿Quién recibe?
+                        </h4>
+                        <div class="grid md:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Nombre completo *</label>
+                                <input type="text" id="receiverName" required class="w-full px-4 py-3 rounded-xl border border-gray-300 focus:border-pink-500 focus:ring-2 focus:ring-pink-200 outline-none transition">
                             </div>
-                            <small>Se calcula automáticamente desde nuestra ubicación</small>
-                        </div>
-
-                        <div class="form-group">
-                            <label for="landmarks">Señas específicas (opcional)</label>
-                            <textarea id="landmarks" rows="2" placeholder="Color de casa, cerca de qué lugar, etc."></textarea>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Teléfono (8 dígitos) *</label>
+                                <input type="tel" id="receiverPhone" required pattern="[0-9]{8}" maxlength="8" placeholder="88888888" class="w-full px-4 py-3 rounded-xl border border-gray-300 focus:border-pink-500 focus:ring-2 focus:ring-pink-200 outline-none transition">
+                            </div>
                         </div>
                     </div>
-                </div>
 
-                <!-- Detalles -->
-                <div class="form-section">
-                    <h3>💌 Detalles del Pedido</h3>
-                    <div class="form-group">
-                        <label for="cardMessage">Mensaje para la tarjeta (máx. 200 caracteres)</label>
-                        <textarea id="cardMessage" rows="3" maxlength="200" placeholder="Escribe tu mensaje..." oninput="updateCharCount(this)"></textarea>
-                        <small id="charCount">0/200 caracteres</small>
-                    </div>
-                    
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label for="deliveryDate">Fecha de entrega *</label>
-                            <input type="date" id="deliveryDate" required>
+                    <!-- Remitente -->
+                    <div class="space-y-4">
+                        <h4 class="font-semibold text-gray-900 flex items-center gap-2">
+                            <i data-lucide="heart" class="w-5 h-5 text-pink-600"></i>
+                            ¿Quién envía?
+                        </h4>
+                        <div class="grid md:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Nombre completo *</label>
+                                <input type="text" id="senderName" required class="w-full px-4 py-3 rounded-xl border border-gray-300 focus:border-pink-500 focus:ring-2 focus:ring-pink-200 outline-none transition">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Teléfono *</label>
+                                <input type="tel" id="senderPhone" required pattern="[0-9]{8}" maxlength="8" placeholder="88888888" class="w-full px-4 py-3 rounded-xl border border-gray-300 focus:border-pink-500 focus:ring-2 focus:ring-pink-200 outline-none transition">
+                            </div>
                         </div>
-                        <div class="form-group">
-                            <label for="deliveryTime">Horario *</label>
-                            <select id="deliveryTime" required>
-                                <option value="">Selecciona</option>
-                                <option value="morning">Mañana (8am-12pm)</option>
-                                <option value="afternoon">Tarde (12pm-5pm)</option>
-                                <option value="evening">Noche (5pm-8pm)</option>
+                    </div>
+
+                    <!-- Entrega -->
+                    <div class="space-y-4">
+                        <h4 class="font-semibold text-gray-900 flex items-center gap-2">
+                            <i data-lucide="truck" class="w-5 h-5 text-pink-600"></i>
+                            Tipo de entrega
+                        </h4>
+                        <div class="grid md:grid-cols-2 gap-4">
+                            <label class="cursor-pointer">
+                                <input type="radio" name="deliveryType" value="delivery" onchange="toggleDeliveryOptions()" class="hidden peer">
+                                <div class="p-4 rounded-xl border-2 border-gray-200 peer-checked:border-pink-500 peer-checked:bg-pink-50 transition">
+                                    <div class="flex items-center gap-3">
+                                        <i data-lucide="truck" class="w-6 h-6 text-pink-600"></i>
+                                        <div>
+                                            <div class="font-semibold">A domicilio</div>
+                                            <div class="text-sm text-gray-600">Calculamos el envío</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </label>
+                            <label class="cursor-pointer">
+                                <input type="radio" name="deliveryType" value="pickup" onchange="toggleDeliveryOptions()" class="hidden peer">
+                                <div class="p-4 rounded-xl border-2 border-gray-200 peer-checked:border-pink-500 peer-checked:bg-pink-50 transition">
+                                    <div class="flex items-center gap-3">
+                                        <i data-lucide="store" class="w-6 h-6 text-pink-600"></i>
+                                        <div>
+                                            <div class="font-semibold">Recoger en tienda</div>
+                                            <div class="text-sm text-gray-600">Sin costo adicional</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </label>
+                        </div>
+
+                        <div id="deliveryFields" class="hidden space-y-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Dirección exacta *</label>
+                                <input type="text" id="deliveryAddress" class="w-full px-4 py-3 rounded-xl border border-gray-300 focus:border-pink-500 focus:ring-2 focus:ring-pink-200 outline-none transition" placeholder="Calle, número, barrio...">
+                            </div>
+                            
+                            <button type="button" onclick="toggleMap()" class="w-full py-3 border-2 border-dashed border-pink-300 rounded-xl text-pink-600 font-medium hover:bg-pink-50 transition flex items-center justify-center gap-2">
+                                <i data-lucide="map-pin" class="w-5 h-5"></i>
+                                Marcar ubicación exacta en el mapa
+                            </button>
+                            
+                            <div id="mapContainer" class="hidden">
+                                <div id="map"></div>
+                                <div id="distanceInfo" class="mt-4 p-4 bg-pink-50 rounded-xl hidden">
+                                    <div class="flex justify-between items-center">
+                                        <span class="text-gray-700">Distancia:</span>
+                                        <span class="font-bold text-pink-600" id="distanceText">0 km</span>
+                                    </div>
+                                    <div class="flex justify-between items-center mt-2">
+                                        <span class="text-gray-700">Costo de envío:</span>
+                                        <span class="font-bold text-pink-600 text-lg" id="shippingCostText">₡0</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Señas específicas (opcional)</label>
+                                <input type="text" id="deliveryReferences" class="w-full px-4 py-3 rounded-xl border border-gray-300 focus:border-pink-500 focus:ring-2 focus:ring-pink-200 outline-none transition" placeholder="Casa verde, portón negro, etc.">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Fecha y hora -->
+                    <div class="grid md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Fecha de entrega *</label>
+                            <input type="date" id="deliveryDate" required class="w-full px-4 py-3 rounded-xl border border-gray-300 focus:border-pink-500 focus:ring-2 focus:ring-pink-200 outline-none transition">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Horario preferido *</label>
+                            <select id="deliveryTime" required class="w-full px-4 py-3 rounded-xl border border-gray-300 focus:border-pink-500 focus:ring-2 focus:ring-pink-200 outline-none transition">
+                                <option value="">Seleccionar...</option>
+                                <option value="morning">Mañana (8am - 12pm)</option>
+                                <option value="afternoon">Tarde (12pm - 5pm)</option>
+                                <option value="evening">Noche (5pm - 7pm)</option>
                             </select>
                         </div>
                     </div>
 
-                    <div class="form-group">
-                        <label for="paymentMethod">Método de Pago *</label>
-                        <select id="paymentMethod" required onchange="showPaymentInfo()">
-                            <option value="">Selecciona método</option>
-                            <option value="sinpe">📱 SINPE Móvil</option>
-                            <option value="cash">💵 Efectivo</option>
-                            <option value="transfer">🏦 Transferencia BAC</option>
-                        </select>
+                    <!-- Mensaje -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Mensaje para la tarjeta</label>
+                        <textarea id="cardMessage" rows="3" maxlength="200" class="w-full px-4 py-3 rounded-xl border border-gray-300 focus:border-pink-500 focus:ring-2 focus:ring-pink-200 outline-none transition resize-none" placeholder="Escribe tu mensaje de amor, amistad, condolencias..."></textarea>
+                        <div class="text-right text-sm text-gray-500 mt-1"><span id="charCount">0</span>/200</div>
                     </div>
-                </div>
 
-                <!-- Resumen -->
-                <div class="form-section">
-                    <h3>💵 Resumen del Pedido</h3>
-                    <div id="orderItemsPreview" class="order-preview"></div>
-                    <div class="order-totals">
-                        <div class="summary-row">
-                            <span>Subtotal:</span>
-                            <span id="checkoutSubtotal">₡0</span>
+                    <!-- Pago -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Método de pago *</label>
+                        <select id="paymentMethod" required onchange="showPaymentDetails()" class="w-full px-4 py-3 rounded-xl border border-gray-300 focus:border-pink-500 focus:ring-2 focus:ring-pink-200 outline-none transition">
+                            <option value="">Seleccionar...</option>
+                            <option value="sinpe">SINPE Móvil</option>
+                            <option value="transfer">Transferencia bancaria</option>
+                            <option value="cash">Efectivo al recibir</option>
+                        </select>
+                        
+                        <div id="sinpeDetails" class="hidden mt-4 p-4 bg-green-50 rounded-xl border border-green-200">
+                            <div class="flex items-center gap-2 mb-2">
+                                <i data-lucide="smartphone" class="w-5 h-5 text-green-600"></i>
+                                <span class="font-semibold text-green-800">SINPE Móvil</span>
+                            </div>
+                            <p class="text-green-700">Número: <strong>8605-3613</strong></p>
+                            <p class="text-sm text-green-600 mt-1">A nombre de: Floristería Santa Bárbara</p>
                         </div>
-                        <div class="summary-row">
-                            <span>Envío:</span>
-                            <span id="checkoutShipping">₡0</span>
+                    </div>
+
+                    <!-- Resumen -->
+                    <div class="bg-gray-50 p-4 rounded-xl space-y-2">
+                        <div class="flex justify-between">
+                            <span class="text-gray-600">Subtotal</span>
+                            <span class="font-medium" id="checkoutSubtotal">₡0</span>
                         </div>
-                        <div class="summary-row total">
-                            <span>TOTAL:</span>
+                        <div class="flex justify-between">
+                            <span class="text-gray-600">Envío</span>
+                            <span class="font-medium" id="checkoutShipping">-</span>
+                        </div>
+                        <div class="flex justify-between text-xl font-bold text-gray-900 pt-2 border-t">
+                            <span>Total</span>
                             <span id="checkoutTotal">₡0</span>
                         </div>
                     </div>
-                </div>
 
-                <!-- Info de pago -->
-                <div class="payment-info" id="paymentInfoSinpe" style="display: none;">
-                    <h4>📱 Pago por SINPE Móvil</h4>
-                    <p><strong>Número:</strong> 8605-3613</p>
-                    <p><strong>A nombre de:</strong> Floristería Santa Bárbara</p>
-                    <small>Envía el comprobante por WhatsApp después de ordenar</small>
-                </div>
-
-                <div class="payment-info" id="paymentInfoTransfer" style="display: none;">
-                    <h4>🏦 Pago por Transferencia</h4>
-                    <p><strong>Banco:</strong> BAC</p>
-                    <p><strong>Cuenta:</strong> 123456789</p>
-                    <p><strong>A nombre de:</strong> Floristería Santa Bárbara S.A.</p>
-                </div>
-
-                <button type="submit" class="submit-order-btn">
-                    📲 Enviar Pedido por WhatsApp
-                </button>
-            </form>
+                    <button type="submit" class="w-full gradient-pink text-white py-4 rounded-xl font-bold text-lg hover:shadow-xl transition flex items-center justify-center gap-2">
+                        <i data-lucide="send" class="w-5 h-5"></i>
+                        Enviar pedido por WhatsApp
+                    </button>
+                </form>
+            </div>
         </div>
     </div>
 
-    <!-- Toast Notification -->
-    <div id="toast" class="toast"></div>
+    <!-- Toast -->
+    <div id="toast" class="fixed bottom-6 left-1/2 transform -translate-x-1/2 bg-gray-900 text-white px-6 py-3 rounded-full shadow-2xl z-[60] hidden flex items-center gap-2">
+        <span id="toastMessage"></span>
+    </div>
 
-    <!-- Scripts -->
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
-    <script src="js/db.js"></script>
-    <script src="js/carousel.js"></script>
-    <script src="js/cart.js"></script>
-    <script src="js/main.js"></script>
+    <!-- Loading Overlay -->
+    <div id="loadingOverlay" class="fixed inset-0 bg-white/80 backdrop-blur-sm z-[70] hidden flex items-center justify-center">
+        <div class="text-center">
+            <div class="w-16 h-16 border-4 border-pink-200 border-t-pink-600 rounded-full animate-spin mx-auto mb-4"></div>
+            <p class="text-gray-600 font-medium">Procesando...</p>
+        </div>
+    </div>
+
+    <script>
+        // ==========================================
+        // CONFIGURACIÓN FIREBASE (REEMPLAZAR CON TUS DATOS)
+        // ==========================================
+        const firebaseConfig = {
+            apiKey: "TU_API_KEY",
+            authDomain: "TU_PROYECTO.firebaseapp.com",
+            projectId: "TU_PROYECTO",
+            storageBucket: "TU_PROYECTO.appspot.com",
+            messagingSenderId: "TU_SENDER_ID",
+            appId: "TU_APP_ID"
+        };
+
+        // Inicializar Firebase
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+        const storage = firebase.storage();
+        const auth = firebase.auth();
+
+        // ==========================================
+        // ESTADO GLOBAL
+        // ==========================================
+        let cart = [];
+        let products = [];
+        let categories = [];
+        let currentCategory = 'todos';
+        let map = null;
+        let marker = null;
+        let selectedCoords = null;
+        const SHOP_LOCATION = { lat: 9.8644, lng: -83.9236 }; // Actualizar con coordenadas reales
+        const SHIPPING_RATE = 650; // ₡ por km
+
+        // ==========================================
+        // INICIALIZACIÓN
+        // ==========================================
+        document.addEventListener('DOMContentLoaded', () => {
+            lucide.createIcons();
+            initDateInput();
+            loadCategories();
+            loadProducts();
+            loadHeroSlides();
+            initContactMap();
+            
+            // Navbar scroll effect
+            window.addEventListener('scroll', () => {
+                const nav = document.getElementById('navbar');
+                if (window.scrollY > 50) {
+                    nav.classList.add('shadow-md');
+                } else {
+                    nav.classList.remove('shadow-md');
+                }
+            });
+        });
+
+        function initDateInput() {
+            const today = new Date();
+            today.setMinutes(today.getMinutes() - today.getTimezoneOffset());
+            document.getElementById('deliveryDate').min = today.toISOString().split('T')[0];
+            
+            const maxDate = new Date();
+            maxDate.setDate(maxDate.getDate() + 30);
+            document.getElementById('deliveryDate').max = maxDate.toISOString().split('T')[0];
+        }
+
+        // ==========================================
+        // CARGA DE DATOS DESDE FIREBASE
+        // ==========================================
+        async function loadCategories() {
+            try {
+                const snapshot = await db.collection('categories').orderBy('order').get();
+                categories = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                
+                const container = document.getElementById('categoryFilters');
+                categories.forEach(cat => {
+                    const btn = document.createElement('button');
+                    btn.className = 'category-btn whitespace-nowrap px-6 py-3 rounded-full font-medium transition-all bg-white text-gray-700 border border-gray-200 hover:border-pink-300';
+                    btn.textContent = cat.name;
+                    btn.onclick = () => filterProducts(cat.id);
+                    btn.dataset.category = cat.id;
+                    container.appendChild(btn);
+                });
+            } catch (error) {
+                console.error('Error cargando categorías:', error);
+                showToast('Error al cargar categorías', 'error');
+            }
+        }
+
+        async function loadProducts() {
+            try {
+                const snapshot = await db.collection('products')
+                    .where('active', '==', true)
+                    .orderBy('createdAt', 'desc')
+                    .get();
+                
+                products = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                renderProducts();
+            } catch (error) {
+                console.error('Error cargando productos:', error);
+                document.getElementById('productsGrid').innerHTML = `
+                    <div class="col-span-full text-center py-12 text-gray-500">
+                        Error al cargar productos. Por favor recarga la página.
+                    </div>
+                `;
+            }
+        }
+
+        function renderProducts() {
+            const grid = document.getElementById('productsGrid');
+            const filtered = currentCategory === 'todos' 
+                ? products 
+                : products.filter(p => p.categoryId === currentCategory);
+            
+            if (filtered.length === 0) {
+                grid.innerHTML = `
+                    <div class="col-span-full text-center py-12">
+                        <i data-lucide="package-x" class="w-16 h-16 mx-auto text-gray-300 mb-4"></i>
+                        <p class="text-gray-500">No hay productos en esta categoría</p>
+                    </div>
+                `;
+                lucide.createIcons();
+                return;
+            }
+            
+            grid.innerHTML = filtered.map(product => {
+                const price = product.onSale && product.salePrice ? product.salePrice : product.price;
+                const originalPrice = product.onSale && product.salePrice ? product.price : null;
+                
+                return `
+                    <div class="product-card bg-white rounded-2xl overflow-hidden shadow-lg border border-gray-100">
+                        <div class="relative aspect-square overflow-hidden bg-gray-100">
+                            <img src="${product.imageUrl || '/api/placeholder/400/400'}" 
+                                 alt="${product.name}" 
+                                 class="w-full h-full object-cover transition-transform duration-500 hover:scale-110"
+                                 loading="lazy">
+                            ${product.onSale ? '<span class="absolute top-3 left-3 bg-red-500 text-white text-xs font-bold px-3 py-1 rounded-full">OFERTA</span>' : ''}
+                        </div>
+                        <div class="p-5">
+                            <div class="text-xs text-pink-600 font-semibold uppercase tracking-wide mb-1">
+                                ${categories.find(c => c.id === product.categoryId)?.name || 'Producto'}
+                            </div>
+                            <h3 class="font-bold text-gray-900 mb-2 line-clamp-2">${product.name}</h3>
+                            <p class="text-gray-600 text-sm mb-4 line-clamp-2">${product.description || ''}</p>
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <span class="text-2xl font-bold text-gray-900">₡${price.toLocaleString()}</span>
+                                    ${originalPrice ? `<span class="text-sm text-gray-400 line-through ml-2">₡${originalPrice.toLocaleString()}</span>` : ''}
+                                </div>
+                                <button onclick="addToCart('${product.id}')" class="bg-pink-600 text-white p-3 rounded-full hover:bg-pink-700 transition shadow-lg hover:shadow-xl transform hover:scale-110">
+                                    <i data-lucide="plus" class="w-5 h-5"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+            
+            lucide.createIcons();
+        }
+
+        async function loadHeroSlides() {
+            try {
+                const snapshot = await db.collection('heroSlides').orderBy('order').get();
+                const slides = snapshot.docs.map(doc => doc.data());
+                
+                const container = document.getElementById('heroSlider');
+                if (slides.length > 0) {
+                    container.innerHTML = slides.map((slide, index) => `
+                        <div class="absolute inset-0 transition-opacity duration-1000 ${index === 0 ? 'opacity-100' : 'opacity-0'}" data-slide="${index}">
+                            <img src="${slide.imageUrl}" alt="${slide.title}" class="w-full h-full object-cover">
+                            <div class="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
+                            <div class="absolute bottom-8 left-8 text-white">
+                                <h3 class="text-2xl font-bold mb-2">${slide.title}</h3>
+                                <p class="text-white/90">${slide.subtitle}</p>
+                            </div>
+                        </div>
+                    `).join('');
+                    
+                    // Auto-rotate slides
+                    let currentSlide = 0;
+                    setInterval(() => {
+                        const slideEls = container.querySelectorAll('[data-slide]');
+                        slideEls[currentSlide].classList.remove('opacity-100');
+                        slideEls[currentSlide].classList.add('opacity-0');
+                        currentSlide = (currentSlide + 1) % slideEls.length;
+                        slideEls[currentSlide].classList.remove('opacity-0');
+                        slideEls[currentSlide].classList.add('opacity-100');
+                    }, 5000);
+                }
+            } catch (error) {
+                console.error('Error cargando slides:', error);
+            }
+        }
+
+        // ==========================================
+        // FILTROS Y NAVEGACIÓN
+        // ==========================================
+        function filterProducts(categoryId) {
+            currentCategory = categoryId;
+            
+            // Update UI
+            document.querySelectorAll('.category-btn').forEach(btn => {
+                const isActive = btn.dataset.category === categoryId || (!btn.dataset.category && categoryId === 'todos');
+                if (isActive) {
+                    btn.classList.add('bg-pink-600', 'text-white', 'shadow-md');
+                    btn.classList.remove('bg-white', 'text-gray-700', 'border', 'border-gray-200');
+                } else {
+                    btn.classList.remove('bg-pink-600', 'text-white', 'shadow-md');
+                    btn.classList.add('bg-white', 'text-gray-700', 'border', 'border-gray-200');
+                }
+            });
+            
+            renderProducts();
+        }
+
+        function toggleMobileMenu() {
+            const menu = document.getElementById('mobileMenu');
+            menu.classList.toggle('hidden');
+        }
+
+        // ==========================================
+        // CARRITO
+        // ==========================================
+        function addToCart(productId) {
+            const product = products.find(p => p.id === productId);
+            if (!product) return;
+            
+            const existingItem = cart.find(item => item.id === productId);
+            const price = product.onSale && product.salePrice ? product.salePrice : product.price;
+            
+            if (existingItem) {
+                existingItem.quantity++;
+            } else {
+                cart.push({
+                    id: product.id,
+                    name: product.name,
+                    price: price,
+                    imageUrl: product.imageUrl,
+                    quantity: 1
+                });
+            }
+            
+            updateCartUI();
+            showToast('Agregado al carrito', 'success');
+            
+            // Animate cart icon
+            const badge = document.getElementById('cartCount');
+            badge.classList.add('scale-125');
+            setTimeout(() => badge.classList.remove('scale-125'), 200);
+        }
+
+        function updateCartUI() {
+            const count = cart.reduce((sum, item) => sum + item.quantity, 0);
+            const badge = document.getElementById('cartCount');
+            badge.textContent = count;
+            badge.classList.toggle('hidden', count === 0);
+            
+            const container = document.getElementById('cartItems');
+            if (cart.length === 0) {
+                container.innerHTML = `
+                    <div class="text-center py-8 text-gray-500">
+                        <i data-lucide="shopping-bag" class="w-16 h-16 mx-auto mb-4 opacity-30"></i>
+                        <p>Tu carrito está vacío</p>
+                    </div>
+                `;
+            } else {
+                container.innerHTML = cart.map(item => `
+                    <div class="flex gap-4 items-center">
+                        <img src="${item.imageUrl}" alt="${item.name}" class="w-20 h-20 object-cover rounded-lg">
+                        <div class="flex-1">
+                            <h4 class="font-semibold text-gray-900 line-clamp-1">${item.name}</h4>
+                            <p class="text-pink-600 font-bold">₡${item.price.toLocaleString()}</p>
+                            <div class="flex items-center gap-3 mt-2">
+                                <button onclick="updateQuantity('${item.id}', -1)" class="w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center">
+                                    <i data-lucide="minus" class="w-4 h-4"></i>
+                                </button>
+                                <span class="font-medium w-8 text-center">${item.quantity}</span>
+                                <button onclick="updateQuantity('${item.id}', 1)" class="w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center">
+                                    <i data-lucide="plus" class="w-4 h-4"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <button onclick="removeFromCart('${item.id}')" class="text-gray-400 hover:text-red-500 transition">
+                            <i data-lucide="trash-2" class="w-5 h-5"></i>
+                        </button>
+                    </div>
+                `).join('');
+            }
+            
+            // Totals
+            const subtotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+            document.getElementById('cartSubtotal').textContent = '₡' + subtotal.toLocaleString();
+            document.getElementById('cartTotal').textContent = '₡' + subtotal.toLocaleString();
+            document.getElementById('checkoutBtn').disabled = cart.length === 0;
+            
+            lucide.createIcons();
+        }
+
+        function updateQuantity(productId, change) {
+            const item = cart.find(i => i.id === productId);
+            if (!item) return;
+            
+            item.quantity += change;
+            if (item.quantity <= 0) {
+                cart = cart.filter(i => i.id !== productId);
+            }
+            updateCartUI();
+        }
+
+        function removeFromCart(productId) {
+            cart = cart.filter(i => i.id !== productId);
+            updateCartUI();
+        }
+
+        function toggleCart() {
+            const modal = document.getElementById('cartModal');
+            modal.classList.toggle('hidden');
+            document.body.style.overflow = modal.classList.contains('hidden') ? '' : 'hidden';
+        }
+
+        // ==========================================
+        // CHECKOUT Y MAPA
+        // ==========================================
+        function openCheckout() {
+            toggleCart();
+            document.getElementById('checkoutModal').classList.remove('hidden');
+            document.body.style.overflow = 'hidden';
+            
+            // Update totals
+            const subtotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+            document.getElementById('checkoutSubtotal').textContent = '₡' + subtotal.toLocaleString();
+            document.getElementById('checkoutTotal').textContent = '₡' + subtotal.toLocaleString();
+        }
+
+        function closeCheckout() {
+            document.getElementById('checkoutModal').classList.add('hidden');
+            document.body.style.overflow = '';
+        }
+
+        function toggleDeliveryOptions() {
+            const type = document.querySelector('input[name="deliveryType"]:checked')?.value;
+            const fields = document.getElementById('deliveryFields');
+            fields.classList.toggle('hidden', type !== 'delivery');
+            
+            if (type === 'pickup') {
+                document.getElementById('checkoutShipping').textContent = 'Gratis';
+                updateTotal();
+            }
+        }
+
+        function toggleMap() {
+            const container = document.getElementById('mapContainer');
+            container.classList.toggle('hidden');
+            
+            if (!container.classList.contains('hidden') && !map) {
+                setTimeout(initMap, 100);
+            }
+        }
+
+        function initMap() {
+            map = L.map('map').setView([SHOP_LOCATION.lat, SHOP_LOCATION.lng], 14);
+            
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© OpenStreetMap'
+            }).addTo(map);
+            
+            // Marcador de la tienda
+            L.marker([SHOP_LOCATION.lat, SHOP_LOCATION.lng])
+                .addTo(map)
+                .bindPopup('🌸 Floristería Santa Bárbara')
+                .openPopup();
+            
+            // Click para seleccionar ubicación
+            map.on('click', function(e) {
+                if (marker) map.removeLayer(marker);
+                
+                marker = L.marker(e.latlng, { draggable: true }).addTo(map);
+                selectedCoords = e.latlng;
+                
+                calculateShipping(e.latlng.lat, e.latlng.lng);
+                
+                marker.on('dragend', function(event) {
+                    selectedCoords = event.target.getLatLng();
+                    calculateShipping(selectedCoords.lat, selectedCoords.lng);
+                });
+            });
+        }
+
+        function calculateShipping(lat, lng) {
+            const R = 6371;
+            const dLat = (lat - SHOP_LOCATION.lat) * Math.PI / 180;
+            const dLon = (lng - SHOP_LOCATION.lng) * Math.PI / 180;
+            const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                      Math.cos(SHOP_LOCATION.lat * Math.PI / 180) * Math.cos(lat * Math.PI / 180) *
+                      Math.sin(dLon/2) * Math.sin(dLon/2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+            const distance = R * c;
+            
+            const cost = Math.max(1000, Math.round(distance * SHIPPING_RATE));
+            
+            document.getElementById('distanceInfo').classList.remove('hidden');
+            document.getElementById('distanceText').textContent = distance.toFixed(1) + ' km';
+            document.getElementById('shippingCostText').textContent = '₡' + cost.toLocaleString();
+            document.getElementById('checkoutShipping').textContent = '₡' + cost.toLocaleString();
+            
+            updateTotal();
+        }
+
+        function updateTotal() {
+            const subtotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+            const shippingText = document.getElementById('checkoutShipping').textContent;
+            const shipping = shippingText === 'Gratis' || shippingText === '-' ? 0 : 
+                            parseInt(shippingText.replace(/[^0-9]/g, '')) || 0;
+            document.getElementById('checkoutTotal').textContent = '₡' + (subtotal + shipping).toLocaleString();
+        }
+
+        function initContactMap() {
+            const mapDiv = document.getElementById('contactMap');
+            if (!mapDiv) return;
+            
+            const contactMap = L.map('contactMap').setView([SHOP_LOCATION.lat, SHOP_LOCATION.lng], 16);
+            
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© OpenStreetMap'
+            }).addTo(contactMap);
+            
+            L.marker([SHOP_LOCATION.lat, SHOP_LOCATION.lng])
+                .addTo(contactMap)
+                .bindPopup(`
+                    <div style="text-align: center;">
+                        <strong>🌸 Floristería Santa Bárbara</strong><br>
+                        Del parqueo de Pali 100m sur<br>
+                        <a href="https://maps.google.com/?q=${SHOP_LOCATION.lat},${SHOP_LOCATION.lng}" target="_blank">Ver en Google Maps</a>
+                    </div>
+                `)
+                .openPopup();
+        }
+
+        function showPaymentDetails() {
+            const method = document.getElementById('paymentMethod').value;
+            document.getElementById('sinpeDetails').classList.toggle('hidden', method !== 'sinpe');
+        }
+
+        // ==========================================
+        // PROCESAR PEDIDO
+        // ==========================================
+        async function processOrder(e) {
+            e.preventDefault();
+            
+            if (cart.length === 0) {
+                showToast('El carrito está vacío', 'error');
+                return;
+            }
+            
+            const deliveryType = document.querySelector('input[name="deliveryType"]:checked')?.value;
+            if (!deliveryType) {
+                showToast('Selecciona tipo de entrega', 'error');
+                return;
+            }
+            
+            if (deliveryType === 'delivery' && !selectedCoords) {
+                showToast('Marca tu ubicación en el mapa', 'error');
+                toggleMap();
+                return;
+            }
+            
+            showLoading(true);
+            
+            try {
+                // Guardar pedido en Firebase
+                const orderData = {
+                    items: cart,
+                    receiver: {
+                        name: document.getElementById('receiverName').value,
+                        phone: document.getElementById('receiverPhone').value
+                    },
+                    sender: {
+                        name: document.getElementById('senderName').value,
+                        phone: document.getElementById('senderPhone').value
+                    },
+                    delivery: {
+                        type: deliveryType,
+                        address: deliveryType === 'delivery' ? document.getElementById('deliveryAddress').value : null,
+                        coordinates: selectedCoords ? { lat: selectedCoords.lat, lng: selectedCoords.lng } : null,
+                        references: document.getElementById('deliveryReferences').value,
+                        date: document.getElementById('deliveryDate').value,
+                        time: document.getElementById('deliveryTime').value
+                    },
+                    message: document.getElementById('cardMessage').value,
+                    paymentMethod: document.getElementById('paymentMethod').value,
+                    subtotal: cart.reduce((sum, item) => sum + (item.price * item.quantity), 0),
+                    shipping: deliveryType === 'delivery' ? 
+                        parseInt(document.getElementById('shippingCostText').textContent.replace(/[^0-9]/g, '')) : 0,
+                    status: 'pending',
+                    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                };
+                
+                orderData.total = orderData.subtotal + orderData.shipping;
+                
+                // Guardar en Firestore
+                const orderRef = await db.collection('orders').add(orderData);
+                
+                // Generar mensaje WhatsApp
+                const message = generateWhatsAppMessage(orderData, orderRef.id);
+                
+                // Abrir WhatsApp
+                window.open(`https://wa.me/50686053613?text=${encodeURIComponent(message)}`, '_blank');
+                
+                // Limpiar carrito
+                cart = [];
+                updateCartUI();
+                closeCheckout();
+                document.getElementById('checkoutForm').reset();
+                
+                showToast('¡Pedido enviado! Redirigiendo a WhatsApp...', 'success');
+                
+            } catch (error) {
+                console.error('Error:', error);
+                showToast('Error al procesar el pedido', 'error');
+            } finally {
+                showLoading(false);
+            }
+        }
+
+        function generateWhatsAppMessage(order, orderId) {
+            const itemsList = order.items.map((item, i) => 
+                `${i + 1}. ${item.name} x${item.quantity} = ₡${(item.price * item.quantity).toLocaleString()}`
+            ).join('\n');
+            
+            let msg = `🌸 *NUEVO PEDIDO #${orderId.slice(-6)}* 🌸\n\n`;
+            msg += `*PARA:* ${order.receiver.name} (${order.receiver.phone})\n`;
+            msg += `*DE:* ${order.sender.name} (${order.sender.phone})\n\n`;
+            msg += `*PRODUCTOS:*\n${itemsList}\n\n`;
+            msg += `*SUBTOTAL:* ₡${order.subtotal.toLocaleString()}\n`;
+            msg += `*ENVÍO:* ₡${order.shipping.toLocaleString()}\n`;
+            msg += `*TOTAL:* ₡${order.total.toLocaleString()}\n\n`;
+            
+            if (order.delivery.type === 'delivery') {
+                msg += `*ENTREGA A DOMICILIO*\n`;
+                msg += `📍 ${order.delivery.address}\n`;
+                if (order.delivery.coordinates) {
+                    msg += `🗺️ https://maps.google.com/?q=${order.delivery.coordinates.lat},${order.delivery.coordinates.lng}\n`;
+                }
+            } else {
+                msg += `*RECOGER EN TIENDA*\n`;
+            }
+            
+            msg += `\n*FECHA:* ${order.delivery.date}\n`;
+            msg += `*HORA:* ${order.delivery.time}\n`;
+            msg += `*PAGO:* ${order.paymentMethod.toUpperCase()}\n`;
+            
+            if (order.message) {
+                msg += `\n*MENSAJE:* "${order.message}"\n`;
+            }
+            
+            msg += `\n✅ Confirmar disponibilidad por favor`;
+            
+            return msg;
+        }
+
+        // ==========================================
+        // UTILIDADES
+        // ==========================================
+        function showToast(message, type = 'info') {
+            const toast = document.getElementById('toast');
+            const msgEl = document.getElementById('toastMessage');
+            
+            msgEl.textContent = message;
+            toast.className = `fixed bottom-6 left-1/2 transform -translate-x-1/2 px-6 py-3 rounded-full shadow-2xl z-[60] flex items-center gap-2 toast ${
+                type === 'success' ? 'bg-green-600' : type === 'error' ? 'bg-red-600' : 'bg-gray-900'
+            } text-white`;
+            
+            toast.classList.remove('hidden');
+            
+            setTimeout(() => {
+                toast.classList.add('hidden');
+            }, 3000);
+        }
+
+        function showLoading(show) {
+            document.getElementById('loadingOverlay').classList.toggle('hidden', !show);
+        }
+
+        // Character counter
+        document.getElementById('cardMessage')?.addEventListener('input', function() {
+            document.getElementById('charCount').textContent = this.value.length;
+        });
+    </script>
 </body>
 </html>
