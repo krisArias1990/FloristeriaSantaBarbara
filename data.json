@@ -1,0 +1,29 @@
+{
+    "version": "2.0",
+    "description": "Estructura de datos para Floristería Santa Bárbara",
+    "shop": {
+        "name": "Floristería Santa Bárbara",
+        "phone": "50686053613",
+        "address": "Santa Bárbara, Heredia, Costa Rica",
+        "coordinates": {
+            "lat": 9.86,
+            "lng": -83.92
+        },
+        "shipping": {
+            "costPerKm": 650,
+            "minCost": 1000
+        }
+    },
+    "categories": [
+        {"id": "rosas", "name": "Rosas"},
+        {"id": "girasoles", "name": "Girasoles"},
+        {"id": "arreglos", "name": "Arreglos"},
+        {"id": "funerales", "name": "Funerales"},
+        {"id": "peluches", "name": "Peluches y Detalles"}
+    ],
+    "notes": {
+        "images": "Las imágenes se almacenan como base64 en localStorage",
+        "backup": "Use la función Exportar en el panel admin para respaldos",
+        "limit": "Límite aproximado: 5-10MB según navegador"
+    }
+}
